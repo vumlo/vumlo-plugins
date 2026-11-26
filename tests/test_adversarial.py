@@ -582,7 +582,7 @@ async def test_a_core_that_answers_oddly_gives_the_defaults(fake):
 
 
 def test_a_method_is_upper_cased_like_ascii_only():
-    base = {"id": "p", "version": "1", "api": "1"}
+    base = {"id": "p", "version": "1", "api": "2"}
     assert validate_manifest({**base, "routes": [{"method": "get", "path": "/a", "roles": ["admin"]}]})["routes"][0]["method"] == "GET"
     # Rust `to_ascii_uppercase` leaves the long s alone, so `PoſT` is not POST there and must not be here.
     with pytest.raises(ManifestError):
@@ -590,7 +590,7 @@ def test_a_method_is_upper_cased_like_ascii_only():
 
 
 def test_minimum_and_maximum_must_be_finite():
-    base = {"id": "p", "version": "1", "api": "1"}
+    base = {"id": "p", "version": "1", "api": "2"}
     for bad in (float("inf"), float("-inf"), float("nan")):
         with pytest.raises(ManifestError):
             validate_manifest({**base, "settings": {"n": {"type": "number", "minimum": bad}}})
