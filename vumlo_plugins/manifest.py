@@ -13,16 +13,16 @@ import re
 import unicodedata
 from typing import Any
 
-API_VERSION = "1"
+API_VERSION = "2"
 SUBSCRIBABLE = (
     "submission.submitted", "grade.published", "plugin.settings.changed", "assignment.created",
-    "assignment.updated", "assignment.deadline_changed", "enrollment.changed", "quiz.attempt_submitted",
+    "assignment.updated", "assignment.deadline_changed", "enrollment.changed", "attempt.autograded",
     "announcement.published",
 )
 SETTINGS_CHANGED = "plugin.settings.changed"
 SCOPES = (
     "submissions:read", "reports:write", "settings:read", "assignments:read", "roster:read", "grades:read",
-    "quizzes:read", "users:contact", "announcements:read", "mail:send",
+    "attempts:read", "users:contact", "announcements:read", "mail:send",
 )
 SLOTS = ("assignment.tab",)
 ROUTE_METHODS = ("GET", "POST", "PUT", "PATCH", "DELETE")

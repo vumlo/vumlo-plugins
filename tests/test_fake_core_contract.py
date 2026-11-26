@@ -24,7 +24,7 @@ def populated(fake: FakeCore):
     student = fake.add_user("Sam", "Student")
     fake.enroll(course, student)
     work = fake.add_assignment(course, title="Essay", due_at="2026-03-10T09:00:00Z")
-    form = fake.add_assignment(course, kind="form", fields=[{"key": "q", "label": "Q", "type": "text"}])
+    form = fake.add_assignment(course, kind="form", config={"fields": [{"key": "q", "label": "Q", "type": "text"}]})
     quiz = fake.add_assignment(course, kind="quiz")
     fake.add_quiz(quiz, {"questions": [{"id": "q1", "type": "single", "points": 1,
                                         "options": [{"id": "a", "text": "A", "correct": True}]}]})
@@ -45,9 +45,7 @@ def routes_of(fake: FakeCore) -> set[tuple[str, str]]:
 
 def test_the_fake_serves_every_route_the_core_documents_for_plugins(fake):
     documented = {(method.upper(), path) for path, ops in contract.spec()["paths"].items() for method in ops}
-    served = routes_of(fake) - {("POST", f"{contract.API_PREFIX}/plugin-api/mail")}
-    assert documented - NOT_FAKED == served, "refresh the OpenAPI file, or serve what is missing"
-    assert ("POST", contract.MAIL_PATH) in routes_of(fake)
+    assert documented - NOT_FAKED == routes_of(fake), "refresh the OpenAPI file, or serve what is missing"
 
 
 async def get_all(fake: FakeCore, course, work, quiz, sub, form_sub):
@@ -56,9 +54,9 @@ async def get_all(fake: FakeCore, course, work, quiz, sub, form_sub):
     paths = [
         f"{p}/assignments?course_id={course['id']}", f"{p}/assignments/{work['id']}",
         f"{p}/assignments/deleted?deleted_since=2026-03-01T00:00:00Z",
-        f"{p}/assignments/{work['id']}/submissions", f"{p}/assignments/{quiz['id']}/quiz",
+        f"{p}/assignments/{work['id']}/submissions", f"{p}/assignments/{quiz['id']}",
         f"{p}/assignments/{quiz['id']}/attempts", f"{p}/submissions/{sub['id']}",
-        f"{p}/submissions/{form_sub['id']}/fields", f"{p}/courses/{course['id']}/members?role=student",
+        f"{p}/submissions/{form_sub['id']}/answers", f"{p}/courses/{course['id']}/members?role=student",
         f"{p}/grades?course_id={course['id']}&assignment_id={work['id']}", f"{p}/announcements",
         f"{p}/announcements/deleted?deleted_since=2026-03-01T00:00:00Z", f"{p}/settings?course_id={course['id']}",
     ]

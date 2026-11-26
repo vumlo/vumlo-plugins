@@ -80,10 +80,10 @@ class _Failure:
 
 
 def _pick(obj: dict[str, Any], names: tuple[str, ...]) -> dict[str, Any]:
-    return {k: obj[k] for k in names if k in obj and not (k == "fields" and obj[k] is None)}
+    return {k: obj[k] for k in names if k in obj and not (k == "config" and obj[k] is None)}
 
 
-ASSIGNMENT = ("id", "course_id", "kind", "title", "due_at", "max_points", "fields", "updated_at")
+ASSIGNMENT = ("id", "course_id", "kind", "title", "due_at", "max_points", "config", "updated_at")
 GRADE = ("course_id", "assignment_id", "student_id", "score", "max_points", "published_by", "published_at")
 MEMBER = ("user_id", "name", "surname", "role", "source")
 SUBMISSION_ITEM = ("id", "student_id", "attempt", "submitted_at", "is_late", "graded_at")
@@ -119,7 +119,7 @@ class FakeCore:
         self.secret = secret
         self.validate = contract.available() if validate is None else validate
         self.scopes: set[str] = {"submissions:read", "reports:write", "settings:read", "assignments:read",
-                                 "roster:read", "grades:read", "quizzes:read", "users:contact",
+                                 "roster:read", "grades:read", "attempts:read", "users:contact",
                                  "announcements:read", "mail:send"}
         self.granted_courses: set[str] | None = None  # None: all
         self.calls: list[Call] = []
@@ -144,7 +144,6 @@ class FakeCore:
         self.assignments: dict[str, dict[str, Any]] = {}
         self.submissions: dict[str, dict[str, Any]] = {}
         self.grades: list[dict[str, Any]] = []
-        self.quizzes: dict[str, dict[str, Any]] = {}
         self.attempts: list[dict[str, Any]] = []
         self.announcements: dict[str, dict[str, Any]] = {}
         self.tombstones: list[dict[str, Any]] = []
@@ -184,10 +183,11 @@ class FakeCore:
 
     def add_assignment(self, course: Any, *, kind: str = "text", title: str = "Assignment",
                        due_at: datetime | str | None = None, max_points: Any = "100",
-                       fields: list[dict[str, Any]] | None = None, published: bool = True,
+                       config: dict[str, Any] | None = None, published: bool = True,
                        updated_at: datetime | str | None = None) -> dict[str, Any]:
+        """`config` is what the type exposes to a plugin: `{"fields": [...]}` of a form, the questions of a quiz."""
         item = {"id": self._id(), "course_id": _ref(course), "kind": kind, "title": title, "due_at": _time(due_at),
-                "max_points": str(Decimal(str(max_points))), "fields": fields,
+                "max_points": str(Decimal(str(max_points))), "config": _strip_key(config),
                 "updated_at": _time(updated_at, clock.now()), "published": published}
         self.assignments[item["id"]] = item
         return item
@@ -208,9 +208,10 @@ class FakeCore:
                                     "deleted_at": clock.iso(clock.now())})
 
     def add_quiz(self, assignment: Any, config: dict[str, Any]) -> dict[str, Any]:
+        """Make the assignment a quiz; the core serves its questions without the answer key."""
         item = self.assignments[_ref(assignment)]
         item["kind"] = "quiz"
-        self.quizzes[item["id"]] = config
+        item["config"] = _strip_key(config)
         return config
 
     def add_submission(self, assignment: Any, student: Any, *, text: str | None = None,
@@ -316,10 +317,9 @@ class FakeCore:
         add("GET", f"{p}/assignments/deleted", "assignments:read", self._deleted_assignments)
         add("GET", f"{p}/assignments/{{id}}", "assignments:read", self._assignment)
         add("GET", f"{p}/assignments/{{id}}/submissions", "submissions:read", self._assignment_submissions)
-        add("GET", f"{p}/assignments/{{id}}/quiz", "quizzes:read", self._quiz)
-        add("GET", f"{p}/assignments/{{id}}/attempts", "quizzes:read", self._attempts)
+        add("GET", f"{p}/assignments/{{id}}/attempts", "attempts:read", self._attempts)
         add("GET", f"{p}/submissions/{{id}}", "submissions:read", self._submission)
-        add("GET", f"{p}/submissions/{{id}}/fields", "assignments:read", self._fields)
+        add("GET", f"{p}/submissions/{{id}}/answers", "assignments:read", self._answers)
         add("GET", f"{p}/courses/{{id}}/members", "roster:read", self._members)
         add("GET", f"{p}/grades", "grades:read", self._grades)
         add("GET", f"{p}/announcements", "announcements:read", self._announcements)
@@ -508,10 +508,10 @@ class FakeCore:
         self._reach(sub["course_id"])
         return 200, _pick(sub, SUBMISSION), {}
 
-    def _fields(self, request, _body, id):
+    def _answers(self, request, _body, id):
         sub = self.submissions.get(self._uuid(id, "id"))
         if sub is None or self.assignments[sub["assignment_id"]]["kind"] != "form":
-            raise Problem(404, "no such submitted attempt, or not at a form")
+            raise Problem(404, "no such submitted attempt, or its type shares no answers")
         self._reach(sub["course_id"])
         answers = (sub["content"] or {}).get("answers", {})
         return 200, {"submission_id": sub["id"], "course_id": sub["course_id"], "assignment_id": sub["assignment_id"],
@@ -548,13 +548,6 @@ class FakeCore:
                 and (since is None or clock.parse_time(g["published_at"]) >= since)]
         rows.sort(key=lambda g: (g["published_at"], g["student_id"], g["assignment_id"]))
         return self._page(request, rows, GRADE)
-
-    def _quiz(self, request, _body, id):
-        work = self._assignment_of(id)
-        if work["kind"] != "quiz":
-            raise Problem(404, "no such quiz")
-        return 200, {"assignment_id": work["id"], "course_id": work["course_id"], "max_points": work["max_points"],
-                     "config": _strip_key(self.quizzes.get(work["id"], {}))}, {}
 
     def _attempts(self, request, _body, id):
         work = self._assignment_of(id)

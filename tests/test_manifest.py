@@ -62,7 +62,7 @@ def test_a_good_manifest_is_returned_as_the_core_stores_it():
     raw = good(subscribes=["submission.submitted", "submission.submitted"], scopes=["reports:write", "reports:write"])
     out = validate_manifest(raw)
     assert out["subscribes"] == ["submission.submitted"] and out["scopes"] == ["reports:write"]
-    assert out["api"] == "1" and out["routes"] == [] and out["ui"] == [] and out["settings"] == {}
+    assert out["api"] == "2" and out["routes"] == [] and out["ui"] == [] and out["settings"] == {}
 
 
 @pytest.mark.parametrize("plugin_id", ["", "Upper", "1abc", "has space", "x" * 33, "ünï", "a.b", "_a"])
@@ -79,7 +79,7 @@ def test_version_and_api():
     refused(good(version=""), "version")
     refused(good(version="x" * 33), "version")
     refused(good(version="1\n0"), "version")
-    refused(good(api="2"), "not supported")
+    refused(good(api="1"), "not supported")
     refused({**good(), "version": 1}, "not the JSON object")
     refused([], "not the JSON object")
 

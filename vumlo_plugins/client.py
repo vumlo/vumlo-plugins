@@ -155,8 +155,9 @@ class PluginClient:
     async def submission(self, submission_id: str | UUID) -> dict[str, Any]:
         return await self.request("GET", f"/plugin-api/submissions/{_id(submission_id)}")
 
-    async def form_answers(self, submission_id: str | UUID) -> dict[str, Any]:
-        return await self.request("GET", f"/plugin-api/submissions/{_id(submission_id)}/fields")
+    async def answers(self, submission_id: str | UUID) -> dict[str, Any]:
+        """The values a student gave in an attempt of a type that shares them (a form), by field id."""
+        return await self.request("GET", f"/plugin-api/submissions/{_id(submission_id)}/answers")
 
     async def members(self, course_id: str | UUID, role: str | None = None) -> list[dict[str, Any]]:
         return await self.all(f"/plugin-api/courses/{_id(course_id)}/members", role=role)
@@ -167,9 +168,6 @@ class PluginClient:
     ) -> list[dict[str, Any]]:
         return await self.all("/plugin-api/grades", course_id=course_id, assignment_id=assignment_id,
                               updated_since=updated_since)
-
-    async def quiz(self, assignment_id: str | UUID) -> dict[str, Any]:
-        return await self.request("GET", f"/plugin-api/assignments/{_id(assignment_id)}/quiz")
 
     async def attempts(self, assignment_id: str | UUID, *, updated_since: datetime | str | None = None):
         return await self.all(f"/plugin-api/assignments/{_id(assignment_id)}/attempts", updated_since=updated_since)

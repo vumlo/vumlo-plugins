@@ -84,7 +84,7 @@ async def test_quiz_is_served_without_its_key(world):
     fake, client, course, teacher, students, work = world
     fake.add_quiz(work, {"questions": [{"id": "q1", "type": "single", "points": 1, "options": [
         {"id": "a", "text": "A", "correct": True}, {"id": "b", "text": "B"}], "explanation": "because"}]})
-    quiz = await client.quiz(work["id"])
+    quiz = await client.assignment(work["id"])
     assert quiz["config"]["questions"][0]["options"][0] == {"id": "a", "text": "A"}
     assert "explanation" not in quiz["config"]["questions"][0]
 
